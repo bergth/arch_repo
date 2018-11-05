@@ -2,7 +2,7 @@
 
 WORK_DIR="$HOME/archrepo/work"
 DEST_DIR="$HOME/archrepo/dest"
-
+NAME="bergth"
 
 set -e 
 
@@ -64,7 +64,6 @@ rmv_pkg()
 {
     PWORKDIR=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
     if [ "$PWORKDIR" != "" ]; then
-        exit 1
         sqlite3 "$WORK_DIR/pkg.db" "delete from lst_pkg where name = '$1'";
         rm -rf $WORK_DIR/$PWORKDIR
     else
@@ -98,7 +97,19 @@ make_pkg()
         cd "$WORK_DIR/$PWORKDIR"
         ACVER=$(get_pkgbuild_version $WORK_DIR/$PWORKDIR)
         makechrootpkg -c -r "$WORK_DIR/chroot"
+        LIST_PKGXZ="$(ls -1 *.pkg.tar.xz)"
+        
+        while read e; do
+            echo "add $e"
+            cp "$e" "$DEST_DIR"
+            cd "$DEST_DIR"
+            repo-add "./$NAME.db.tar.gz" "$e"
+
+        done <<< "$LIST_PKGXZ"
+
         sqlite3 "$WORK_DIR/pkg.db" "update lst_pkg set ver = '$ACVER' where name = '$1'"
+
+
     else
         echo "!! Your package is not in work directory !!"
         exit 1
@@ -134,7 +145,6 @@ update_needed()
         echo "1"
     else
         ACVER=$(get_pkgbuild_version "$WORK_DIR/$PPATH")
-        echo "$LBVER" "$ACVER"
         if [ "$(vercmp $ACVER $LBVER) " -gt "0" ]; then
             echo "1"
         else
@@ -177,12 +187,15 @@ make_all()
     fi
 }
 
+
+
 test_and_mkdir
 init_chroot
 create_database
 update_chroot
-#aur_add_pkg "google-chrome"
-#make_pkg AUR/google-chrome
+rmv_pkg "google-chrome"
+#rmv_pkg "gogs"
+aur_add_pkg "google-chrome"
 make_all
 #get_pkgbuild_version "$WORK_DIR/AUR/google-chrome"
 #get_pkgbuild_version "$WORK_DIR/AUR/gogs"
