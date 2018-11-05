@@ -60,11 +60,13 @@ aur_add_pkg()
     
 }
 
-aur_rmv_pkg()
+rmv_pkg()
 {
-    if [ -d "$WORK_DIR/AUR/$1" ]; then
+    PWORKDIR=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
+    if [ "$PWORKDIR" != "" ]; then
+        exit 1
         sqlite3 "$WORK_DIR/pkg.db" "delete from lst_pkg where name = '$1'";
-        rm -rf $WORK_DIR/AUR/$1
+        rm -rf $WORK_DIR/$PWORKDIR
     else
         echo "!! Your package is not in AUR work directory !!"
         exit 1
@@ -92,9 +94,9 @@ make_pkg()
 {
     PWORKDIR=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
 
-    if [ "$WORK_DIR/$PWORKDIR" == "" ]; then
-        cd "$WORK_DIR/$1"
-        $ACVER = get_pkgbuild_version $WORK_DIR/$1
+    if [ "$WORK_DIR/$PWORKDIR" != "" ]; then
+        cd "$WORK_DIR/$PWORKDIR"
+        ACVER=$(get_pkgbuild_version $WORK_DIR/$PWORKDIR)
         makechrootpkg -c -r "$WORK_DIR/chroot"
         sqlite3 "$WORK_DIR/pkg.db" "update lst_pkg set ver = '$ACVER' where name = '$1'"
     else
@@ -106,35 +108,82 @@ make_pkg()
 list_pkg()
 {
     SQLITE=$(sqlite3 "$WORK_DIR/pkg.db" "select * from lst_pkg");
-    
-    while read e; do
-        PNAME=$(echo $e | cut -d\| -f 2)
-        PWDIR=$(echo $e | cut -d\| -f 3)
-        LBVER=$(echo $e | cut -d\| -f 4)
-        ACVER=$(get_pkgbuild_version "$WORK_DIR/$PWDIR")
+    if [ "$SQLITE" == "" ]; then
+        echo "Database is empty"
+    else
+        while read e; do
+            PNAME=$(echo $e | cut -d\| -f 2)
+            PWDIR=$(echo $e | cut -d\| -f 3)
+            LBVER=$(echo $e | cut -d\| -f 4)
+            ACVER=$(get_pkgbuild_version "$WORK_DIR/$PWDIR")
+            echo "*----------------------------------------------*"
+            echo " + $PNAME"
+            echo "     => work directory: [$WORK_DIR/$PWDIR]"
+            echo "     => Last build version: [$LBVER]"
+            echo "     => Version in work dir: [$ACVER]"
+        done <<< "$SQLITE"
         echo "*----------------------------------------------*"
-        echo " + $PNAME"
-        echo "     => work directory: [$WORK_DIR/$PWDIR]"
-        echo "     => Last build version: [$LBVER]"
-        echo "     => Version in work dir: [$ACVER]"
-    done <<< "$SQLITE"
-    echo "*----------------------------------------------*"
+    fi
 }
 
+update_needed()
+{
+    PPATH=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
+    LBVER=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct ver from lst_pkg where name = '$1'")
+    if [ "$LBVER" == "" ]; then
+        echo "1"
+    else
+        ACVER=$(get_pkgbuild_version "$WORK_DIR/$PPATH")
+        echo "$LBVER" "$ACVER"
+        if [ "$(vercmp $ACVER $LBVER) " -gt "0" ]; then
+            echo "1"
+        else
+            echo "0"
+        fi
+    fi
+}
 
+make_all()
+{
+    SQLITE=$(sqlite3 "$WORK_DIR/pkg.db" "select * from lst_pkg");
+    if [ "$SQLITE" == "" ]; then
+        echo "Database is empty"
+    else
+        ARRAY=()
+        while read e; do
+            PNAME=$(echo $e | cut -d\| -f 2)
+            PWDIR=$(echo $e | cut -d\| -f 3)
+            LBVER=$(echo $e | cut -d\| -f 4)
+            ACVER=$(get_pkgbuild_version "$WORK_DIR/$PWDIR")
+            if [ "$(update_needed $PNAME)" -gt "0" ]; then
+                echo "*----------------------------------------------*"
+                echo " + $PNAME"
+                echo "     => work directory: [$WORK_DIR/$PWDIR]"
+                echo "     => Last build version: [$LBVER]"
+                echo "     => Version in work dir: [$ACVER]"
+                ARRAY+=("$PNAME")
+            fi 
+        done <<< "$SQLITE"
+        echo "*----------------------------------------------*"
+        echo "Need to update: "
+        echo "    => ${ARRAY[*]}"
+        read -p "go ? " valid
+        if [ "$valid" == "y" ]; then
+            for i in "${ARRAY[@]}"; do
+                echo "!! Update $i !!"
+                make_pkg $i
+            done
+        fi
+    fi
+}
 
-
-#test_and_mkdir
-#init_chroot
-#create_database
-#update_chroot
-#aur_add_pkg "gogs"
+test_and_mkdir
+init_chroot
+create_database
+update_chroot
+#aur_add_pkg "google-chrome"
 #make_pkg AUR/google-chrome
-
-list_pkg
-make_pkg google-chrome
-list_pkg
-
+make_all
 #get_pkgbuild_version "$WORK_DIR/AUR/google-chrome"
 #get_pkgbuild_version "$WORK_DIR/AUR/gogs"
 
