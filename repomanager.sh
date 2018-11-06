@@ -18,17 +18,29 @@ test_and_mkdir()
     fi
 }
 
+echo_mnt_repo()
+{
+    sudo bash -c " echo \"[$NAME]\" >>  \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+    sudo bash -c " echo \"SigLevel = Optional TrustAll\" >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+    sudo bash -c "echo \"Server = file:///mnt\"  >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+}
+
 init_chroot()
 {
     if [ ! -d "$WORK_DIR/chroot" ]; then
         mkdir "$WORK_DIR/chroot"
         mkarchroot "$WORK_DIR/chroot/root" base-devel
+        echo_mnt_repo
     fi
 }
 
+
+
 update_chroot()
 {
+    sudo mount --bind -o ro "$DEST_DIR" "$WORK_DIR/chroot/root/mnt"
     arch-nspawn "$WORK_DIR/chroot/root" pacman -Syu
+    sudo umount "$WORK_DIR/chroot/root/mnt"
 }
 
 
@@ -116,7 +128,7 @@ make_pkg()
     if [ "$WORK_DIR/$PWORKDIR" != "" ]; then
         cd "$WORK_DIR/$PWORKDIR"
         ACVER=$(get_pkgbuild_version $WORK_DIR/$PWORKDIR)
-        makechrootpkg -c -r "$WORK_DIR/chroot"
+        makechrootpkg -D "$DEST_DIR/:/mnt"  -c -r "$WORK_DIR/chroot"
         LIST_PKGXZ="$(ls -1 *.pkg.tar.xz)"
         
         rmv_pkg_repo $1
@@ -213,7 +225,9 @@ make_all()
 
 test_and_mkdir
 init_chroot
+#echo_mnt_repo
 create_database
+update_chroot
 
 if [ "$1" == "addaur" ] && [ "$2 " != "" ]; then
     aur_add_pkg "$2"
