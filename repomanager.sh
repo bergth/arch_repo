@@ -37,6 +37,8 @@ create_database()
     if [ ! -f "$WORK_DIR/pkg.db" ]; then
         sqlite3 "$WORK_DIR/pkg.db" \
         "create table lst_pkg (id INTEGER PRIMARY KEY, name TEXT, path TEXT, ver TEXT)"
+        sqlite3 "$WORK_DIR/pkg.db" \
+        "create table mkf_pkg (id INTEGER PRIMARY KEY, name TEXT, pkg TEXT)"
     fi  
 }
 
@@ -60,17 +62,7 @@ aur_add_pkg()
     
 }
 
-rmv_pkg()
-{
-    PWORKDIR=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
-    if [ "$PWORKDIR" != "" ]; then
-        sqlite3 "$WORK_DIR/pkg.db" "delete from lst_pkg where name = '$1'";
-        rm -rf $WORK_DIR/$PWORKDIR
-    else
-        echo "!! Your package is not in AUR work directory !!"
-        exit 1
-    fi
-}
+
 
 get_pkgbuild_version()
 {
@@ -89,6 +81,34 @@ get_pkgbuild_version()
     echo "$FINAL"
 }
 
+rmv_pkg_repo()
+{
+    SQLITE=$(sqlite3 "$WORK_DIR/pkg.db" "select pkg from mkf_pkg where name = '$1'");
+    if [ "$SQLITE" != "" ]; then
+        cd "$DEST_DIR"
+        while read e; do
+            PRNAME="$(pacman -Q --info -p $e | grep Name | cut -d: -f 2 | tr -d '[:space:]')"
+            repo-remove "./$NAME.db.tar.gz" "$PRNAME"
+        done <<< $SQLITE
+    fi
+    sqlite3 "$WORK_DIR/pkg.db" "delete from mkf_pkg where name = '$1'";
+}
+
+
+rmv_pkg()
+{
+    PWORKDIR=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
+    if [ "$PWORKDIR" != "" ]; then
+        sqlite3 "$WORK_DIR/pkg.db" "delete from lst_pkg where name = '$1'";
+        rmv_pkg_repo $1
+        rm -rf $WORK_DIR/$PWORKDIR
+    else
+        echo "!! Your package is not in AUR work directory !!"
+        exit 1
+    fi
+}
+
+
 make_pkg()
 {
     PWORKDIR=$(sqlite3 "$WORK_DIR/pkg.db" "select distinct path from lst_pkg where name = '$1'")
@@ -99,12 +119,14 @@ make_pkg()
         makechrootpkg -c -r "$WORK_DIR/chroot"
         LIST_PKGXZ="$(ls -1 *.pkg.tar.xz)"
         
+        rmv_pkg_repo $1
         while read e; do
             echo "add $e"
+            cd "$WORK_DIR/$PWORKDIR"
             cp "$e" "$DEST_DIR"
             cd "$DEST_DIR"
             repo-add "./$NAME.db.tar.gz" "$e"
-
+            sqlite3 "$WORK_DIR/pkg.db" "insert into mkf_pkg(name,pkg) values ('$1', '$e')"
         done <<< "$LIST_PKGXZ"
 
         sqlite3 "$WORK_DIR/pkg.db" "update lst_pkg set ver = '$ACVER' where name = '$1'"
@@ -193,10 +215,8 @@ test_and_mkdir
 init_chroot
 create_database
 update_chroot
-rmv_pkg "google-chrome"
-#rmv_pkg "gogs"
-aur_add_pkg "google-chrome"
+#aur_add_pkg "samsung-unified-driver"
+rmv_pkg "samsung-unified-driver"
 make_all
-#get_pkgbuild_version "$WORK_DIR/AUR/google-chrome"
-#get_pkgbuild_version "$WORK_DIR/AUR/gogs"
 
+repo-elephant
