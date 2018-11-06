@@ -214,9 +214,15 @@ make_all()
 test_and_mkdir
 init_chroot
 create_database
-update_chroot
-#aur_add_pkg "samsung-unified-driver"
-rmv_pkg "samsung-unified-driver"
-make_all
+
+if [ "$1" == "addaur" ] && [ "$2 " != "" ]; then
+    aur_add_pkg "$2"
+elif  [ "$1" == "rmv" ] && [ "$2 " != "" ]; then
+    rmv_pkg "$2"
+elif  [ "$1" == "make" ]; then
+    make_all
+else
+    echo "Check param"
+fi
 
 repo-elephant
