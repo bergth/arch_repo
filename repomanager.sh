@@ -1,7 +1,7 @@
 #!/bin/bash
 
-WORK_DIR="$HOME/archrepo/work"
-DEST_DIR="$HOME/archrepo/dest"
+WORK_DIR="/data/archrepo/work"
+DEST_DIR="/data/archrepo/dest"
 NAME="bergth"
 
 set -e 
@@ -20,9 +20,13 @@ test_and_mkdir()
 
 echo_mnt_repo()
 {
-    sudo bash -c " echo \"[$NAME]\" >>  \"$WORK_DIR/chroot/root/etc/pacman.conf\""
-    sudo bash -c " echo \"SigLevel = Optional TrustAll\" >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
-    sudo bash -c "echo \"Server = file:///mnt\"  >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+	echo "enter mnt repo"
+	if [ "$(grep \[$NAME\] $WORK_DIR/chroot/root/etc/pacman.conf)" == "" ] && [ -f "$DEST_DIR/$NAME.db.tar.gz" ]; then
+		echo "add repo"
+    		sudo bash -c " echo \"[$NAME]\" >>  \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+    		sudo bash -c " echo \"SigLevel = Optional TrustAll\" >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+    		sudo bash -c "echo \"Server = file:///mnt\"  >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
+	fi
 }
 
 init_chroot()
@@ -30,7 +34,6 @@ init_chroot()
     if [ ! -d "$WORK_DIR/chroot" ]; then
         mkdir "$WORK_DIR/chroot"
         mkarchroot "$WORK_DIR/chroot/root" base-devel
-        echo_mnt_repo
     fi
 }
 
@@ -38,6 +41,7 @@ init_chroot()
 
 update_chroot()
 {
+    echo_mnt_repo
     sudo mount --bind -o ro "$DEST_DIR" "$WORK_DIR/chroot/root/mnt"
     arch-nspawn "$WORK_DIR/chroot/root" pacman -Syu
     sudo umount "$WORK_DIR/chroot/root/mnt"
