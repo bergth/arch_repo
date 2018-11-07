@@ -82,9 +82,9 @@ aur_add_pkg()
 
 get_pkgbuild_version()
 {
-    PKGVER=$(grep "pkgver=" "$1/PKGBUILD" | cut -d= -f 2)
-    PKGREL=$(grep "pkgrel=" "$1/PKGBUILD" | cut -d= -f 2)
-    EPOCH=$(grep "epoch=" "$1/PKGBUILD" | cut -d= -f 2)
+    PKGVER=$(grep "^pkgver=" "$1/PKGBUILD" | cut -d= -f 2)
+    PKGREL=$(grep "^pkgrel=" "$1/PKGBUILD" | cut -d= -f 2)
+    EPOCH=$(grep "^epoch=" "$1/PKGBUILD" | cut -d= -f 2)
 
     FINAL=""
     if [ "$EPOCH" != "" ]; then
@@ -239,6 +239,8 @@ elif  [ "$1" == "rmv" ] && [ "$2 " != "" ]; then
     rmv_pkg "$2"
 elif  [ "$1" == "make" ]; then
     make_all
+elif  [ "$1" == "lst" ]; then
+	list_pkg
 else
     echo "Check param"
 fi
