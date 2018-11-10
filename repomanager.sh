@@ -78,7 +78,17 @@ aur_add_pkg()
     
 }
 
-
+aur_update_all()
+{
+    for D in `find $WORK_DIR/AUR/* -maxdepth 0 -type d`
+    do
+        cd "$D"
+        echo "$(pwd)"
+        git reset --hard HEAD
+        git clean -f
+        git pull
+    done
+}
 
 get_pkgbuild_version()
 {
@@ -235,6 +245,8 @@ update_chroot
 
 if [ "$1" == "addaur" ] && [ "$2 " != "" ]; then
     aur_add_pkg "$2"
+elif [ "$1" == "upaur" ]; then
+    aur_update_all
 elif  [ "$1" == "rmv" ] && [ "$2 " != "" ]; then
     rmv_pkg "$2"
 elif  [ "$1" == "make" ]; then
