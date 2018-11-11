@@ -116,6 +116,7 @@ rmv_pkg_repo()
         while read e; do
             PRNAME="$(pacman -Q --info -p $e | grep Name | cut -d: -f 2 | tr -d '[:space:]')"
             repo-remove "./$NAME.db.tar.gz" "$PRNAME"
+	    rm -rf "$e"
         done <<< $SQLITE
     fi
     sqlite3 "$WORK_DIR/pkg.db" "delete from mkf_pkg where name = '$1'";
