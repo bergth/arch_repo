@@ -21,7 +21,8 @@ test_and_mkdir()
 echo_mnt_repo()
 {
 	echo "enter mnt repo"
-	if [ "$(grep '\[$NAME\]' $WORK_DIR/chroot/root/etc/pacman.conf)" == "" ] && [ -f "$DEST_DIR/$NAME.db.tar.gz" ]; then
+	GREP=$(grep "\[$NAME\]" $WORK_DIR/chroot/root/etc/pacman.conf) || true
+	if [ "$GREP" == "" ] && [ -f "$DEST_DIR/$NAME.db.tar.gz" ]; then
 		echo "add repo"
     		sudo bash -c " echo \"[$NAME]\" >>  \"$WORK_DIR/chroot/root/etc/pacman.conf\""
     		sudo bash -c " echo \"SigLevel = Optional TrustAll\" >> \"$WORK_DIR/chroot/root/etc/pacman.conf\""
