@@ -1,7 +1,7 @@
 #!/bin/bash
 
-WORK_DIR="/data/archrepo/work"
-DEST_DIR="/data/archrepo/dest"
+WORK_DIR="/mnt/data/archrepo/work"
+DEST_DIR="/mnt/data/archrepo/dest"
 NAME="bergth"
 
 set -e 
