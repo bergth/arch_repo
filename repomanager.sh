@@ -206,6 +206,7 @@ update_needed()
 make_all()
 {
     SQLITE=$(sqlite3 "$WORK_DIR/pkg.db" "select * from lst_pkg");
+    update_chroot
     if [ "$SQLITE" == "" ]; then
         echo "Database is empty"
     else
@@ -238,12 +239,21 @@ make_all()
 }
 
 
+help()
+{
+    echo "./repomanager.sh addaur <AUR> - Add an AUR package"
+    echo "./repomanager.sh upaur        - Update all aur"
+    echo "./repomanager.sh rmv <AUR>    - Remove AUR package"
+    echo "./repomanager.sh make         - build all packages"
+    echo "./repomanager.sh lst          - list packages"
+}
+
 
 test_and_mkdir
 init_chroot
 #echo_mnt_repo
 create_database
-update_chroot
+
 
 if [ "$1" == "addaur" ] && [ "$2 " != "" ]; then
     aur_add_pkg "$2"
@@ -255,6 +265,8 @@ elif  [ "$1" == "make" ]; then
     make_all
 elif  [ "$1" == "lst" ]; then
 	list_pkg
+elif [ "$1" == "help" ]; then
+    help
 else
     echo "Check param"
 fi
